@@ -59,6 +59,9 @@ export class Input {
             downRight: false
         };
         
+        // Chat input blocking
+        this.isChatOpen = false;
+        
         this.setupEventListeners();
     }
 
@@ -277,6 +280,10 @@ export class Input {
 
     // Check if a specific action key is pressed
     isActionPressed(action) {
+        // Block all game input when chat is open (except chat toggle itself)
+        if (this.isChatOpen && action !== 'chat') {
+            return false;
+        }
         const keyCode = this.keybinds[action];
         return keyCode ? this.keys[keyCode] || false : false;
     }
@@ -416,6 +423,15 @@ export class Input {
         Object.keys(this.mobileDpad).forEach(key => {
             this.mobileDpad[key] = false;
         });
+    }
+    
+    // Chat input control methods
+    setChatOpen(isOpen) {
+        this.isChatOpen = isOpen;
+    }
+    
+    isChatInputBlocked() {
+        return this.isChatOpen;
     }
 
     cleanup() {

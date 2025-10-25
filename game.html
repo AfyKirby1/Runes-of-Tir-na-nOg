@@ -1638,12 +1638,23 @@
                     this.closeChat();
                 });
                 
-                // Enter key to send message
+                // Enter key to send message and prevent game input
                 this.chatInput.addEventListener('keydown', (e) => {
+                    // Prevent all key events from bubbling to game when chat is open
+                    e.stopPropagation();
+                    
                     if (e.key === 'Enter') {
                         e.preventDefault();
                         this.sendMessage();
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        this.closeChat();
                     }
+                });
+                
+                // Also prevent keyup events from bubbling
+                this.chatInput.addEventListener('keyup', (e) => {
+                    e.stopPropagation();
                 });
 
                 // Click outside chat to close (mobile-friendly)
@@ -1687,6 +1698,11 @@
                 this.chatContainer.style.display = 'flex';
                 this.chatInput.focus();
                 this.isChatOpen = true;
+                
+                // Block game input when chat is open
+                if (this.game.input) {
+                    this.game.input.setChatOpen(true);
+                }
             }
             
             closeChat() {
@@ -1694,6 +1710,11 @@
                 this.chatInput.value = '';
                 this.chatInput.blur(); // Remove focus to hide keyboard
                 this.isChatOpen = false;
+                
+                // Re-enable game input when chat is closed
+                if (this.game.input) {
+                    this.game.input.setChatOpen(false);
+                }
             }
             
             sendMessage() {
