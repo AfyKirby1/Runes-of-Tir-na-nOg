@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- ✅ SECURITY FIX (VULN-006): Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; base-uri 'self'; form-action 'self';">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="Referrer-Policy" content="no-referrer">
+    
+    <title>World Selection - Runes of Tir na nÓg</title>
+    <link rel="icon" type="image/png" href="Ground_Texture_1.png">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}body{background:#0a0a0a;font-family:'Cinzel',serif;overflow:hidden;height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center}
+
+        /* Static background base */
+        .pixel-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 50%, #0a0a1a 100%);
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        /* Animated triangular shapes */
+        .floating-shape {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            opacity: 0.3;
+        }
+
+        .triangle-up {
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-bottom: 35px solid #16213e;
+        }
+
+        .triangle-down {
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 35px solid #1a1a2e;
+        }
+
+        .square {
+            width: 30px;
+            height: 30px;
+            background: #16213e;
+            transform: rotate(45deg);
+        }
+
+        /* Vertical floating animations */
+        @keyframes floatUp {
+            0% { transform: translateY(110vh) translateX(0); opacity: 0; }
+            10% { opacity: 0.3; }
+            90% { opacity: 0.3; }
+            100% { transform: translateY(-10vh) translateX(15px); opacity: 0; }
+        }
+
+        @keyframes floatDown {
+            0% { transform: translateY(-10vh) translateX(0); opacity: 0; }
+            10% { opacity: 0.3; }
+            90% { opacity: 0.3; }
+            100% { transform: translateY(110vh) translateX(-15px); opacity: 0; }
+        }
+
+        @keyframes floatUpSlow {
+            0% { transform: translateY(110vh) translateX(0); opacity: 0; }
+            10% { opacity: 0.2; }
+            90% { opacity: 0.2; }
+            100% { transform: translateY(-10vh) translateX(25px); opacity: 0; }
+        }
+
+        @keyframes floatDownSlow {
+            0% { transform: translateY(-10vh) translateX(0); opacity: 0; }
+            10% { opacity: 0.2; }
+            90% { opacity: 0.2; }
+            100% { transform: translateY(110vh) translateX(-25px); opacity: 0; }
+        }
+
+        /* Floating pixel particles */
+        .pixel-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .pixel-particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #d4af37;
+            animation: floatPixel 8s linear infinite;
+        }
+
+        .pixel-particle:nth-child(1) { left: 10%; animation-delay: 0s; }
+        .pixel-particle:nth-child(2) { left: 20%; animation-delay: 1s; }
+        .pixel-particle:nth-child(3) { left: 30%; animation-delay: 2s; }
+        .pixel-particle:nth-child(4) { left: 40%; animation-delay: 3s; }
+        .pixel-particle:nth-child(5) { left: 50%; animation-delay: 4s; }
+        .pixel-particle:nth-child(6) { left: 60%; animation-delay: 5s; }
+        .pixel-particle:nth-child(7) { left: 70%; animation-delay: 6s; }
+        .pixel-particle:nth-child(8) { left: 80%; animation-delay: 7s; }
+        .pixel-particle:nth-child(9) { left: 90%; animation-delay: 0.5s; }
+
+        @keyframes floatPixel {
+            0% {
+                transform: translateY(100vh) translateX(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) translateX(20px);
+                opacity: 0;
+            }
+        }
+
+        /* Main container */
+        .menu-container {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            background: rgba(26, 26, 46, 0.8);
+            border: 2px solid #d4af37;
+            border-radius: 15px;
+            padding: 30px 50px;
+            box-shadow: 
+                0 0 30px rgba(212, 175, 55, 0.5),
+                inset 0 0 30px rgba(212, 175, 55, 0.1);
+            max-width: 700px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .menu-title {
+            font-size: 2.5rem;
+            font-weight: 900;
+            text-align: center;
+            color: #d4af37;
+            text-shadow:
+                2px 2px 0px rgba(139, 90, 43, 0.8),
+                -2px -2px 0px rgba(139, 90, 43, 0.8),
+                4px 4px 8px rgba(0, 0, 0, 0.9);
+            letter-spacing: 3px;
+            margin-bottom: 30px;
+            font-family: 'Cinzel', serif;
+            text-transform: uppercase;
+        }
+
+        /* Menu buttons */
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .menu-button {
+            background: linear-gradient(145deg, #2a2a3e, #1a1a2e);
+            border: 2px solid #d4af37;
+            color: #d4af37;
+            padding: 12px 30px;
+            font-size: 1rem;
+            font-weight: bold;
+            font-family: 'Cinzel', serif;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 6px;
+            box-shadow: 
+                0 3px 6px rgba(0, 0, 0, 0.3),
+                0 0 12px rgba(212, 175, 55, 0.2);
+            min-width: 180px;
+            max-width: 250px;
+        }
+
+        .menu-button:hover {
+            background: linear-gradient(145deg, #3a3a4e, #2a2a3e);
+            border-color: #ffd700;
+            color: #ffd700;
+            transform: translateY(-2px);
+            box-shadow: 
+                0 6px 12px rgba(0, 0, 0, 0.4),
+                0 0 25px rgba(255, 215, 0, 0.4);
+        }
+
+        .menu-button:active {
+            transform: translateY(0px);
+        }
+
+        /* Panel styling */
+        .panel {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        /* Form elements */
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-label {
+            display: block;
+            color: #d4af37;
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px;
+            background: rgba(26, 26, 46, 0.6);
+            border: 2px solid #8b5a2b;
+            border-radius: 5px;
+            color: #d4af37;
+            font-family: 'Cinzel', serif;
+            font-size: 1rem;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #d4af37;
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 10px;
+            background: rgba(26, 26, 46, 0.8);
+            border: 2px solid #8b5a2b;
+            border-radius: 5px;
+            color: #d4af37;
+            font-family: 'Cinzel', serif;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-slider {
+            flex: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 8px;
+            background: rgba(139, 90, 43, 0.3);
+            border-radius: 5px;
+            outline: none;
+        }
+
+        .form-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #d4af37;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(212, 175, 55, 0.5);
+        }
+
+        .form-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #d4af37;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 5px rgba(212, 175, 55, 0.5);
+        }
+
+        .slider-value {
+            min-width: 50px;
+            text-align: right;
+            color: #d4af37;
+            font-weight: bold;
+        }
+
+        /* Bob Toggle Styles */
+        .gameplay-options {
+            background: rgba(26, 26, 46, 0.3);
+            border: 1px solid #8b5a2b;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 8px;
+        }
+
+        .option-item {
+            margin-bottom: 8px;
+        }
+
+        .option-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            margin-bottom: 3px;
+        }
+
+        .toggle-text {
+            color: #d4af37;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 30px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #2a2a3a;
+            border: 2px solid #8b7355;
+            border-radius: 30px;
+            transition: 0.3s;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 2px;
+            bottom: 2px;
+            background-color: #8b7355;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: #654321;
+            border-color: #d4af37;
+        }
+
+        input:checked + .toggle-slider:before {
+            background-color: #d4af37;
+            transform: translateX(30px);
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+        }
+
+        .toggle-status {
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #d4af37;
+            min-width: 80px;
+            text-align: right;
+        }
+
+        .option-description {
+            font-size: 0.75rem;
+            color: #8b7355;
+            font-style: italic;
+            margin-top: 5px;
+            line-height: 1.3;
+        }
+
+        /* Save slots */
+        .save-slot {
+            background: rgba(26, 26, 46, 0.6);
+            border: 2px solid #8b5a2b;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .save-slot:hover {
+            border-color: #d4af37;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+        }
+
+        .save-slot.empty {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .save-slot-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .save-slot-title {
+            color: #d4af37;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .save-slot-info {
+            color: #8b7355;
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+
+        .delete-button {
+            background: rgba(139, 0, 0, 0.3);
+            border: 1px solid #ef4444;
+            color: #ef4444;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .delete-button:hover {
+            background: rgba(139, 0, 0, 0.6);
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+        }
+
+        .back-button {
+            background: linear-gradient(145deg, #3a3a3e, #2a2a2e);
+            border-color: #8b5a2b;
+            color: #8b7355;
+        }
+
+        .back-button:hover {
+            border-color: #d4af37;
+            color: #d4af37;
+        }
+
+        .validation-message {
+            color: #ef4444;
+            font-size: 0.85rem;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .validation-message.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Pixelated background with animated shapes -->
+    <div class="pixel-background">
+        <div class="floating-shape" style="left: 5%; animation: floatUp 12s linear infinite;"><div class="triangle-up"></div></div>
+        <div class="floating-shape" style="left: 15%; animation: floatDown 15s linear infinite; animation-delay: 2s;"><div class="triangle-down"></div></div>
+        <div class="floating-shape" style="left: 25%; animation: floatUpSlow 18s linear infinite; animation-delay: 4s;"><div class="square"></div></div>
+        <div class="floating-shape" style="left: 35%; animation: floatUp 14s linear infinite; animation-delay: 1s;"><div class="triangle-down"></div></div>
+        <div class="floating-shape" style="left: 45%; animation: floatDownSlow 20s linear infinite; animation-delay: 3s;"><div class="triangle-up"></div></div>
+        <div class="floating-shape" style="left: 55%; animation: floatUp 16s linear infinite; animation-delay: 5s;"><div class="square"></div></div>
+        <div class="floating-shape" style="left: 65%; animation: floatDown 13s linear infinite;"><div class="triangle-up"></div></div>
+        <div class="floating-shape" style="left: 75%; animation: floatUpSlow 19s linear infinite; animation-delay: 6s;"><div class="triangle-down"></div></div>
+        <div class="floating-shape" style="left: 85%; animation: floatDownSlow 17s linear infinite; animation-delay: 2s;"><div class="square"></div></div>
+        <div class="floating-shape" style="left: 95%; animation: floatUp 15s linear infinite; animation-delay: 7s;"><div class="triangle-up"></div></div>
+        <div class="floating-shape" style="left: 10%; animation: floatDown 14s linear infinite; animation-delay: 8s;"><div class="triangle-down"></div></div>
+        <div class="floating-shape" style="left: 20%; animation: floatUpSlow 16s linear infinite; animation-delay: 3s;"><div class="square"></div></div>
+        <div class="floating-shape" style="left: 30%; animation: floatDownSlow 18s linear infinite; animation-delay: 5s;"><div class="triangle-up"></div></div>
+        <div class="floating-shape" style="left: 40%; animation: floatUp 13s linear infinite; animation-delay: 9s;"><div class="triangle-down"></div></div>
+        <div class="floating-shape" style="left: 50%; animation: floatDown 19s linear infinite; animation-delay: 1s;"><div class="square"></div></div>
+        <div class="floating-shape" style="left: 60%; animation: floatUpSlow 15s linear infinite; animation-delay: 4s;"><div class="triangle-up"></div></div>
+        <div class="floating-shape" style="left: 70%; animation: floatDownSlow 14s linear infinite; animation-delay: 7s;"><div class="triangle-down"></div></div>
+        <div class="floating-shape" style="left: 80%; animation: floatUp 17s linear infinite; animation-delay: 2s;"><div class="square"></div></div>
+        <div class="floating-shape" style="left: 90%; animation: floatDown 16s linear infinite; animation-delay: 6s;"><div class="triangle-up"></div></div>
+    </div>
+    
+    <!-- Floating pixel particles -->
+    <div class="pixel-particles">
+        <div class="pixel-particle"></div>
+        <div class="pixel-particle"></div>
+        <div class="pixel-particle"></div>
+        <div class="pixel-particle"></div>
+        <div class="pixel-particle"></div>
+        <div class="pixel-particle"></div>
+        <div class="pixel-particle"></div>
+        <div class="pixel-particle"></div>
+        <div class="pixel-particle"></div>
+    </div>
+
+    <!-- Main menu container -->
+    <div class="menu-container" id="mainContainer">
+        <h1 class="menu-title">World Selection</h1>
+        
+        <!-- Main Menu -->
+        <div id="mainMenu" class="panel active">
+            <div class="menu-buttons">
+                <button class="menu-button" onclick="showNewWorldPanel()">
+                    ▶ New World
+                </button>
+                <button class="menu-button" onclick="showLoadWorldPanel()">
+                    📁 Load World
+                </button>
+                <button class="menu-button back-button" onclick="backToMainMenu()">
+                    ← Back to Menu
+                </button>
+            </div>
+        </div>
+
+        <!-- New World Panel -->
+        <div id="newWorldPanel" class="panel">
+            <div class="form-group">
+                <label class="form-label">World Seed</label>
+                <input type="text" id="seedInput" class="form-input" placeholder="Enter seed (letters/numbers)" value="">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">World Size</label>
+                <select id="worldSize" class="form-select">
+                    <option value="small">Small (2500 x 1500)</option>
+                    <option value="medium" selected>Medium (3500 x 2250)</option>
+                    <option value="large">Large (5000 x 3500)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Grass Percentage</label>
+                <div class="slider-container">
+                    <input type="range" id="grassSlider" class="form-slider" min="0" max="100" value="85">
+                    <span class="slider-value" id="grassValue">85%</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Water Percentage</label>
+                <div class="slider-container">
+                    <input type="range" id="waterSlider" class="form-slider" min="0" max="100" value="10">
+                    <span class="slider-value" id="waterValue">10%</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Wall Percentage</label>
+                <div class="slider-container">
+                    <input type="range" id="wallSlider" class="form-slider" min="0" max="100" value="3">
+                    <span class="slider-value" id="wallValue">3%</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Cave Percentage</label>
+                <div class="slider-container">
+                    <input type="range" id="caveSlider" class="form-slider" min="0" max="100" value="2">
+                    <span class="slider-value" id="caveValue">2%</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">🎮 Gameplay Options</label>
+                <div class="gameplay-options">
+                    <div class="option-item">
+                        <label class="toggle-label">
+                            <span class="toggle-text">Bob NPC Character</span>
+                            <div class="toggle-container">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="bobToggle" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <span class="toggle-status" id="bobStatus">Enabled</span>
+                        </label>
+                        <div class="option-description">Enable/disable Bob, the wandering NPC that spawns randomly in the world</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="validation-message" id="validationMessage">
+                Total must equal 100%!
+            </div>
+
+            <div class="menu-buttons" style="margin-top: 20px;">
+                <button class="menu-button" onclick="generateWorld()">
+                    ▶ Generate World
+                </button>
+                <button class="menu-button back-button" onclick="backToMain()">
+                    ← Back
+                </button>
+            </div>
+        </div>
+
+        <!-- Load World Panel -->
+        <div id="loadWorldPanel" class="panel">
+            <div id="saveSlots">
+                <!-- Save slots will be populated by JavaScript -->
+            </div>
+
+            <div class="menu-buttons" style="margin-top: 20px;">
+                <button class="menu-button back-button" onclick="backToMain()">
+                    ← Back
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { SaveSystem } from '../core/SaveSystem.js';
+
+        // Generate random seed
+        function generateRandomSeed() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let seed = '';
+            for (let i = 0; i < 8; i++) {
+                seed += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return seed;
+        }
+
+        // Set random seed on load
+        document.getElementById('seedInput').value = generateRandomSeed();
+
+        // Update slider values
+        const sliders = ['grass', 'water', 'wall', 'cave'];
+        sliders.forEach(type => {
+            const slider = document.getElementById(`${type}Slider`);
+            const value = document.getElementById(`${type}Value`);
+            slider.addEventListener('input', () => {
+                value.textContent = slider.value + '%';
+                validatePercentages();
+            });
+        });
+
+        // Bob toggle functionality
+        const bobToggle = document.getElementById('bobToggle');
+        const bobStatus = document.getElementById('bobStatus');
+        
+        // Load Bob setting from localStorage
+        const bobEnabled = localStorage.getItem('bobEnabled');
+        if (bobEnabled !== null) {
+            bobToggle.checked = bobEnabled === 'true';
+            bobStatus.textContent = bobToggle.checked ? 'Enabled' : 'Disabled';
+        }
+        
+        bobToggle.addEventListener('change', () => {
+            bobStatus.textContent = bobToggle.checked ? 'Enabled' : 'Disabled';
+            bobStatus.style.color = bobToggle.checked ? '#d4af37' : '#8b7355';
+        });
+
+        // Validate that percentages add up to 100%
+        function validatePercentages() {
+            const grass = parseInt(document.getElementById('grassSlider').value);
+            const water = parseInt(document.getElementById('waterSlider').value);
+            const wall = parseInt(document.getElementById('wallSlider').value);
+            const cave = parseInt(document.getElementById('caveSlider').value);
+            
+            const total = grass + water + wall + cave;
+            const message = document.getElementById('validationMessage');
+            
+            if (total !== 100) {
+                message.classList.add('show');
+                return false;
+            } else {
+                message.classList.remove('show');
+                return true;
+            }
+        }
+
+        // Show/hide panels
+        window.showNewWorldPanel = function() {
+            document.getElementById('mainMenu').classList.remove('active');
+            document.getElementById('newWorldPanel').classList.add('active');
+        };
+
+        window.showLoadWorldPanel = function() {
+            document.getElementById('mainMenu').classList.remove('active');
+            loadSaveSlots();
+            document.getElementById('loadWorldPanel').classList.add('active');
+        };
+
+        window.backToMain = function() {
+            document.getElementById('newWorldPanel').classList.remove('active');
+            document.getElementById('loadWorldPanel').classList.remove('active');
+            document.getElementById('mainMenu').classList.add('active');
+        };
+
+        window.backToMainMenu = function() {
+            window.location.href = 'menu.html';
+        };
+
+        // Generate world
+        window.generateWorld = function() {
+            if (!validatePercentages()) {
+                return;
+            }
+
+            const config = {
+                seed: document.getElementById('seedInput').value || generateRandomSeed(),
+                worldSize: document.getElementById('worldSize').value,
+                tilePercentages: {
+                    grass: parseInt(document.getElementById('grassSlider').value),
+                    water: parseInt(document.getElementById('waterSlider').value),
+                    wall: parseInt(document.getElementById('wallSlider').value),
+                    cave: parseInt(document.getElementById('caveSlider').value)
+                }
+            };
+            
+            // Store config in sessionStorage for game initialization
+            sessionStorage.setItem('worldConfig', JSON.stringify(config));
+            
+            // Save Bob setting to localStorage
+            localStorage.setItem('bobEnabled', bobToggle.checked.toString());
+            
+            // Navigate to game
+            window.location.href = '../index.html?new=true';
+        };
+
+        // Load save slots
+        function loadSaveSlots() {
+            const slotsContainer = document.getElementById('saveSlots');
+            slotsContainer.innerHTML = '';
+
+            const slots = SaveSystem.getAllSlots();
+            
+            slots.forEach(slot => {
+                const slotDiv = document.createElement('div');
+                slotDiv.className = slot.exists ? 'save-slot' : 'save-slot empty';
+                
+                if (slot.exists) {
+                    slotDiv.innerHTML = `
+                        <div class="save-slot-header">
+                            <div class="save-slot-title">Slot ${slot.slotNumber}: ${slot.seed}</div>
+                            <button class="delete-button" onclick="deleteSlot(${slot.slotNumber})">Delete</button>
+                        </div>
+                        <div class="save-slot-info">
+                            Size: ${slot.worldSize}<br>
+                            Last Saved: ${SaveSystem.formatDate(slot.lastSaved)}<br>
+                            Playtime: ${SaveSystem.formatPlaytime(slot.playtime)}
+                        </div>
+                    `;
+                    slotDiv.onclick = (e) => {
+                        if (!e.target.classList.contains('delete-button')) {
+                            loadSlot(slot.slotNumber);
+                        }
+                    };
+                } else {
+                    slotDiv.innerHTML = `
+                        <div class="save-slot-title">Slot ${slot.slotNumber}: Empty</div>
+                        <div class="save-slot-info">No saved world</div>
+                    `;
+                }
+                
+                slotsContainer.appendChild(slotDiv);
+            });
+        }
+
+        // Load world from slot
+        window.loadSlot = function(slotNumber) {
+            // Navigate to game with slot parameter
+            window.location.href = `../index.html?slot=${slotNumber}`;
+        };
+
+        // Delete save slot
+        window.deleteSlot = function(slotNumber) {
+            if (confirm(`Delete save slot ${slotNumber}?`)) {
+                SaveSystem.deleteWorld(slotNumber);
+                loadSaveSlots(); // Refresh display
+            }
+        };
+    </script>
+</body>
+</html>
+

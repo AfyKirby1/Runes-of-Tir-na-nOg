@@ -1,0 +1,1944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#4a7c59">
+    
+    <!-- ✅ SECURITY FIX (VULN-006): Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' wss://web-production-b1ed.up.railway.app/ws https://web-production-b1ed.up.railway.app ws://localhost:1234 ws://127.0.0.1:1234; base-uri 'self'; form-action 'self';">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="Referrer-Policy" content="no-referrer">
+    
+    <title>Runes of Tir na nÓg - Prototype</title>
+    <link rel="icon" href="../favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="../favicon.ico" type="image/x-icon">
+    <script>
+        (function() {
+            try {
+                var params = new URLSearchParams(window.location.search);
+                if (params.get('multiplayer') === 'true') {
+                    document.documentElement.classList.add('is-connecting');
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <style>
+        body{margin:0;padding:0;background:#4a7c59;font-family:'Courier New',monospace;color:#fff;overflow:hidden;background-image:radial-gradient(circle at 20% 80%,rgba(139,90,43,0.3) 0%,transparent 50%),radial-gradient(circle at 80% 20%,rgba(74,124,89,0.3) 0%,transparent 50%)}
+
+        .game-container{position:relative;width:100vw;height:100vh;margin:0;padding:0;background:#4a7c59;box-sizing:border-box;overflow:hidden}
+
+        /* Hide game UI elements during loading */
+        .game-container.loading {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .game-container.loading #gameCanvas,
+        .game-container.loading .ui-container,
+        .game-container.loading .controls-bubble,
+        .game-container.loading .mobile-controls,
+        .game-container.loading .mobile-chat-btn,
+        .game-container.loading .mobile-zoom-controls,
+        .game-container.loading .fullscreen-btn {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #gameCanvas{display:block;width:100%;height:100%;margin:0;padding:0}
+
+        .game-title{position:fixed;top:5px;left:50%;transform:translateX(-50%);font-size:2.2em;font-weight:900;text-align:center;color:#d4af37;text-shadow:2px 2px 0px rgba(139,90,43,0.8),-2px -2px 0px rgba(139,90,43,0.8),4px 4px 8px rgba(0,0,0,0.9),0 0 10px #ff6b35,0 0 20px #ff4500,0 0 30px #ff6347;letter-spacing:2px;z-index:3000;background:linear-gradient(45deg,#8b5a2b,#d4af37,#ffd700,#ffed4e,#d4af37);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:titleFloat 4s ease-in-out infinite,simpleFlame 2s ease-in-out infinite alternate;white-space:nowrap;padding:12px 25px;margin:0;font-family:'Courier New',monospace;text-transform:uppercase}
+
+        .title-sparks {
+            position: fixed;
+            top: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            height: 100px;
+            pointer-events: none;
+            z-index: 2999;
+            overflow: hidden;
+        }
+
+        .spark {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: radial-gradient(circle, #ff6b35, #ff4500, #ff6347);
+            border-radius: 50%;
+            animation: sparkFloat 3s ease-in-out infinite;
+            opacity: 0.8;
+        }
+
+        @keyframes sparkFloat {
+            0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.8; }
+            25% { transform: translateY(-10px) rotate(90deg); opacity: 1; }
+            50% { transform: translateY(-5px) rotate(180deg); opacity: 0.6; }
+            75% { transform: translateY(-15px) rotate(270deg); opacity: 0.9; }
+        }
+
+        @keyframes titleFloat {
+            0%, 100% { transform: translateX(-50%) translateY(0px); }
+            50% { transform: translateX(-50%) translateY(-3px); }
+        }
+
+        @keyframes simpleFlame {
+            0% { text-shadow: 2px 2px 0px rgba(139,90,43,0.8),-2px -2px 0px rgba(139,90,43,0.8),4px 4px 8px rgba(0,0,0,0.9),0 0 10px #ff6b35,0 0 20px #ff4500,0 0 30px #ff6347; }
+            100% { text-shadow: 2px 2px 0px rgba(139,90,43,0.8),-2px -2px 0px rgba(139,90,43,0.8),4px 4px 8px rgba(0,0,0,0.9),0 0 15px #ff6b35,0 0 25px #ff4500,0 0 35px #ff6347; }
+        }
+
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Interactive Controls Bubble */
+        .controls-bubble {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(145deg, #8b5a2b, #654321);
+            border: 3px solid #d4af37;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            pointer-events: auto;
+            z-index: 1001;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+        }
+
+        .controls-bubble:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.6);
+            border-color: #ffd700;
+        }
+
+        .bubble-icon {
+            font-size: 24px;
+            filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.8));
+        }
+
+        .bubble-tooltip {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #d4af37;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .controls-bubble:hover .bubble-tooltip {
+            opacity: 1;
+        }
+
+        /* Controls Window */
+        .controls-window {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            pointer-events: auto;
+        }
+
+        .controls-window.show {
+            display: flex;
+        }
+
+        .controls-content {
+            background: linear-gradient(135deg, rgba(26, 26, 46, 0.98), rgba(15, 15, 30, 0.98));
+            border: 3px solid #d4af37;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(212, 175, 55, 0.6);
+        }
+
+        .controls-header {
+            background: linear-gradient(135deg, #8b5a2b, #654321);
+            padding: 20px;
+            border-bottom: 2px solid #d4af37;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .controls-header h3 {
+            margin: 0;
+            color: #d4af37;
+            font-size: 1.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        .controls-close {
+            background: rgba(139, 90, 43, 0.5);
+            border: 2px solid #d4af37;
+            color: #d4af37;
+            font-size: 1.2rem;
+            width: 35px;
+            height: 35px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .controls-close:hover {
+            background: rgba(139, 90, 43, 0.8);
+            border-color: #ffd700;
+            color: #ffd700;
+            transform: scale(1.1);
+        }
+
+        .controls-body {
+            padding: 20px;
+            max-height: 60vh;
+            overflow-y: auto;
+            color: #d4af37;
+        }
+
+        .controls-body::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        .controls-body::-webkit-scrollbar-track {
+            background: rgba(139, 90, 43, 0.3);
+            border-radius: 6px;
+        }
+
+        .controls-body::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #d4af37, #8b5a2b);
+            border-radius: 6px;
+        }
+
+        .controls-body::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #ffd700, #d4af37);
+        }
+
+        .control-category {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(212, 175, 55, 0.3);
+        }
+
+        .control-category:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .control-category h4 {
+            color: #ffd700;
+            margin: 0 0 15px 0;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .control-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            margin: 5px 0;
+        }
+
+        .control-action {
+            color: #d4af37;
+            font-size: 14px;
+        }
+
+        .control-key {
+            background: linear-gradient(145deg, #2a2a3e, #1a1a2e);
+            border: 2px solid #8b7355;
+            color: #ffed4e;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .control-status {
+            margin-left: 10px;
+            font-size: 16px;
+        }
+
+        .control-status.implemented {
+            color: #4ade80;
+        }
+
+        .control-status.coming-soon {
+            color: #ffa500;
+        }
+
+        /* Loading Screen Styles */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 50%, #0a0a1a 100%);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+            font-family: "Courier New", monospace;
+            pointer-events: auto;
+        }
+
+        .loading-screen.show {
+            display: flex;
+        }
+
+        /* Show loading immediately when multiplayer param is present */
+        html.is-connecting .loading-screen {
+            display: flex;
+        }
+
+        /* Hide gameplay while connecting */
+        html.is-connecting .game-container {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-content {
+            text-align: center;
+            background: rgba(26, 26, 46, 0.9);
+            border: 3px solid #d4af37;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.5);
+            min-width: 300px;
+            max-width: 400px;
+        }
+
+        .loading-title {
+            font-size: 2rem;
+            color: #d4af37;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .loading-subtitle {
+            font-size: 1.1rem;
+            color: #d4d4f4;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(212, 175, 55, 0.3);
+            border-top: 4px solid #d4af37;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-progress {
+            width: 100%;
+            height: 8px;
+            background: rgba(212, 175, 55, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .loading-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #d4af37, #ffd700);
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.3s ease;
+            animation: progressGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes progressGlow {
+            0%, 100% { box-shadow: 0 0 5px rgba(212, 175, 55, 0.5); }
+            50% { box-shadow: 0 0 15px rgba(212, 175, 55, 0.8); }
+        }
+
+        .loading-status {
+            color: #d4af37;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            min-height: 20px;
+        }
+
+        .loading-details {
+            color: #8b7355;
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        /* Mobile responsive loading screen */
+        @media (max-width: 768px) {
+            .loading-content {
+                padding: 30px 20px;
+                margin: 20px;
+                min-width: 250px;
+            }
+
+            .loading-title {
+                font-size: 1.5rem;
+                letter-spacing: 1px;
+            }
+
+            .loading-subtitle {
+                font-size: 1rem;
+            }
+
+            .loading-spinner {
+                width: 50px;
+                height: 50px;
+            }
+        }
+
+        .compact-pause-menu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+            font-family: "Courier New", monospace;
+            pointer-events: auto;
+        }
+
+        .compact-pause-menu.show {
+            display: flex;
+        }
+
+        .compact-pause-content {
+            background: linear-gradient(135deg, rgba(26, 26, 46, 0.98), rgba(15, 15, 30, 0.98));
+            border: 3px solid #d4af37;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.5);
+            min-width: 250px;
+            max-width: 300px;
+        }
+
+        .compact-pause-title {
+            font-size: 1.8em;
+            color: #d4af37;
+            margin-bottom: 25px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .compact-pause-button {
+            display: block;
+            width: 100%;
+            padding: 12px 20px;
+            margin: 8px 0;
+            font-size: 1.1em;
+            font-family: "Courier New", monospace;
+            border: 2px solid;
+            border-radius: 8px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .compact-pause-button.settings {
+            background: linear-gradient(145deg, #2d5a2d, #1a3a1a);
+            border-color: #4ade80;
+            color: #4ade80;
+        }
+
+        .compact-pause-button.settings:hover {
+            background: linear-gradient(145deg, #3d6a3d, #2a4a2a);
+            border-color: #6ee7b7;
+            color: #6ee7b7;
+            transform: translateY(-2px);
+        }
+
+        .compact-pause-button.quit {
+            background: linear-gradient(145deg, #5a2d2d, #3a1a1a);
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+
+        .compact-pause-button.quit:hover {
+            background: linear-gradient(145deg, #6a3d3d, #4a2a2a);
+            border-color: #f87171;
+            color: #f87171;
+            transform: translateY(-2px);
+        }
+
+        /* Health Bar Styles */
+        .health-bar {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none; /* Hide bottom health bar - now using above-character display */
+            gap: 5px;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+            pointer-events: none;
+        }
+
+        .heart-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .health-heart {
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+            transition: all 0.3s ease;
+            filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.8));
+        }
+
+        .health-heart:hover {
+            transform: scale(1.1);
+        }
+
+        /* Chat System Styles */
+        .chat-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 400px;
+            height: 300px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            color: #ffffff;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .chat-message {
+            margin-bottom: 5px;
+            word-wrap: break-word;
+        }
+
+        .chat-message.system {
+            color: #d4af37;
+            font-style: italic;
+        }
+
+        .chat-message.player {
+            color: #ffffff;
+        }
+
+        .chat-message .username {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #d4af37;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .chat-title {
+            color: #d4af37;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .chat-close-btn {
+            background: none;
+            border: none;
+            color: #d4af37;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 3px;
+            transition: all 0.2s ease;
+        }
+
+        .chat-close-btn:hover {
+            background: rgba(212, 175, 55, 0.2);
+            color: #ffd700;
+        }
+
+        .chat-input-container {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #d4af37;
+        }
+
+        .chat-input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #d4af37;
+            border-radius: 4px;
+            padding: 8px;
+            color: #ffffff;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: #ffd700;
+        }
+
+        .chat-send {
+            background: #d4af37;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            color: #000000;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+
+        .chat-send:hover {
+            background: #ffd700;
+        }
+
+        /* Mobile Controls Styles */
+        .mobile-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1500;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 15px;
+        }
+
+        /* Mobile Zoom Controls */
+        .mobile-zoom-controls {
+            position: fixed;
+            top: 90px;
+            left: 20px;
+            z-index: 1500;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .zoom-btn {
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #d4af37;
+            border-radius: 50%;
+            color: #d4af37;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .zoom-btn:hover {
+            background: rgba(212, 175, 55, 0.2);
+            border-color: #ffd700;
+            color: #ffd700;
+            transform: scale(1.05);
+        }
+
+        .zoom-btn:active {
+            background: #d4af37;
+            color: #000000;
+            transform: scale(0.95);
+        }
+
+        .zoom-in-btn::before {
+            content: '+';
+            font-size: 24px;
+        }
+
+        .zoom-out-btn::before {
+            content: '−';
+            font-size: 24px;
+        }
+
+        /* Mobile Chat Button - Separate positioning */
+        .mobile-chat-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 60px;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #d4af37;
+            border-radius: 50%;
+            color: #d4af37;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            z-index: 1500;
+        }
+
+        /* Fullscreen Button */
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #d4af37;
+            border-radius: 50%;
+            color: #d4af37;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2001;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        .fullscreen-btn::before {
+            content: '⛶';
+            font-size: 18px;
+        }
+
+        .fullscreen-btn:hover {
+            background: rgba(212, 175, 55, 0.2);
+            border-color: #ffd700;
+            color: #ffd700;
+            transform: scale(1.05);
+        }
+
+        .fullscreen-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Hide fullscreen button on desktop */
+        @media (hover: hover) and (pointer: fine) {
+            .fullscreen-btn {
+                display: none !important;
+            }
+        }
+
+        .mobile-dpad {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            background: transparent;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            grid-template-areas: 
+                "upLeft up upRight"
+                "left center right"
+                "downLeft down downRight";
+        }
+
+        .dpad-center {
+            grid-area: center;
+            background: rgba(212, 175, 55, 0.3);
+            border-radius: 50%;
+            margin: 5px;
+        }
+
+        .dpad-btn {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #d4af37;
+            color: #d4af37;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        .dpad-btn:active {
+            background: #d4af37;
+            color: #000000;
+            transform: scale(0.95);
+        }
+
+        .dpad-up { grid-area: up; }
+        .dpad-down { grid-area: down; }
+        .dpad-left { grid-area: left; }
+        .dpad-right { grid-area: right; }
+        .dpad-up-left { grid-area: upLeft; }
+        .dpad-up-right { grid-area: upRight; }
+        .dpad-down-left { grid-area: downLeft; }
+        .dpad-down-right { grid-area: downRight; }
+
+        .mobile-chat-btn:active {
+            background: #d4af37;
+            color: #000000;
+            transform: scale(0.95);
+        }
+
+        /* Mobile responsive - show controls on touch devices */
+        @media (hover: none) and (pointer: coarse) {
+            .mobile-controls {
+                display: flex !important;
+            }
+            
+            .mobile-chat-btn {
+                display: flex !important;
+            }
+            
+            .fullscreen-btn {
+                display: flex !important;
+            }
+            
+            .mobile-zoom-controls {
+                display: flex !important;
+            }
+            
+            /* Adjust UI elements for mobile */
+            .game-title {
+                font-size: 1.5em;
+                padding: 8px 15px;
+            }
+            
+            .health-bar {
+                bottom: 100px; /* Move up to avoid mobile controls */
+            }
+            
+            .chat-container {
+                width: calc(100vw - 40px);
+                height: 250px;
+                bottom: 20px; /* Keep at bottom */
+                left: 20px; /* Bottom left position */
+            }
+        }
+
+        /* Hide mobile controls on desktop */
+        @media (hover: hover) and (pointer: fine) {
+            .mobile-controls {
+                display: none !important;
+            }
+            
+            .mobile-chat-btn {
+                display: none !important;
+            }
+            
+            .fullscreen-btn {
+                display: none !important;
+            }
+            
+            .mobile-zoom-controls {
+                display: none !important;
+            }
+        }
+
+        /* Additional mobile optimizations */
+        @media (max-width: 768px) {
+            .game-container {
+                touch-action: none; /* Prevent default touch behaviors */
+            }
+            
+            canvas {
+                touch-action: none;
+            }
+            
+            /* Prevent zoom on double tap */
+            * {
+                touch-action: manipulation;
+            }
+            
+            /* Larger touch targets */
+            .dpad-btn {
+                min-height: 44px;
+                min-width: 44px;
+            }
+            
+            .mobile-chat-btn {
+                min-height: 44px;
+                min-width: 44px;
+            }
+            
+            .fullscreen-btn {
+                min-height: 44px;
+                min-width: 44px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen (placed before game to render immediately) -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-title">Connecting</div>
+            <div class="loading-subtitle">Joining Multiplayer Server</div>
+            <div class="loading-spinner"></div>
+            <div class="loading-progress">
+                <div class="loading-progress-bar" id="loadingProgressBar"></div>
+            </div>
+            <div class="loading-status" id="loadingStatus">Initializing connection...</div>
+            <div class="loading-details" id="loadingDetails">Please wait while we connect to the server</div>
+        </div>
+    </div>
+
+    <div class="game-container">
+        <!-- Game Title with Sparks -->
+        <div class="game-title" style="display: none;">RUNES OF TIR NA NÓG</div>
+        <div class="title-sparks" id="titleSparks"></div>
+
+        <!-- Game Canvas -->
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- UI Overlay -->
+        <div class="ui-container">
+            <!-- Health Bar -->
+            <div id="health-bar" class="health-bar"></div>
+            
+            <!-- Pause Button -->
+            <div class="controls-bubble" id="pauseBubble">
+                <div class="bubble-icon">⚙</div>
+                <div class="bubble-tooltip">Game Menu</div>
+            </div>
+        </div>
+
+        <!-- Chat System -->
+        <div id="chatContainer" class="chat-container" style="display: none;">
+            <div class="chat-header">
+                <div class="chat-title">💬 Chat</div>
+                <button id="chatCloseBtn" class="chat-close-btn" title="Close Chat">✖</button>
+            </div>
+            <div id="chatMessages" class="chat-messages"></div>
+            <div class="chat-input-container">
+                <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..." maxlength="200">
+                <button id="chatSend" class="chat-send">Send</button>
+            </div>
+        </div>
+
+        <!-- Fullscreen Button (Mobile Only) -->
+        <button id="fullscreenBtn" class="fullscreen-btn" style="display: none;" title="Enter Fullscreen"></button>
+
+        <!-- Mobile Controls -->
+        <div id="mobileControls" class="mobile-controls" style="display: none;">
+            <!-- D-pad -->
+            <div class="mobile-dpad">
+                <div class="dpad-center"></div>
+                <button class="dpad-btn dpad-up" data-direction="up">↑</button>
+                <button class="dpad-btn dpad-down" data-direction="down">↓</button>
+                <button class="dpad-btn dpad-left" data-direction="left">←</button>
+                <button class="dpad-btn dpad-right" data-direction="right">→</button>
+                <button class="dpad-btn dpad-up-left" data-direction="upLeft">↖</button>
+                <button class="dpad-btn dpad-up-right" data-direction="upRight">↗</button>
+                <button class="dpad-btn dpad-down-left" data-direction="downLeft">↙</button>
+                <button class="dpad-btn dpad-down-right" data-direction="downRight">↘</button>
+            </div>
+        </div>
+
+        <!-- Mobile Chat Button (Separate positioning) -->
+        <button id="mobileChatBtn" class="mobile-chat-btn" style="display: none;">💬</button>
+
+        <!-- Mobile Zoom Controls -->
+        <div id="mobileZoomControls" class="mobile-zoom-controls" style="display: none;">
+            <button id="zoomInBtn" class="zoom-btn zoom-in-btn" title="Zoom In"></button>
+            <button id="zoomOutBtn" class="zoom-btn zoom-out-btn" title="Zoom Out"></button>
+        </div>
+
+        <!-- Compact Pause Menu -->
+        <div id="compactPauseMenu" class="compact-pause-menu">
+            <div class="compact-pause-content">
+                <div class="compact-pause-title" id="compactPauseTitle">Game Menu</div>
+                <button id="compactSettingsBtn" class="compact-pause-button settings">⚙ Settings</button>
+                <button id="compactQuitBtn" class="compact-pause-button quit">🏠 Quit to Menu</button>
+            </div>
+        </div>
+
+        <!-- Pause Menu -->
+        <div id="pauseMenu" class="pause-menu">
+            <div class="pause-content">
+                <div class="pause-title">GAME PAUSED</div>
+                <button id="resumeBtn" class="pause-button resume">▶ RESUME</button>
+                <button id="quitBtn" class="pause-button quit">🏠 QUIT TO MENU</button>
+            </div>
+        </div>
+
+        <!-- Controls Window -->
+        <div id="controlsWindow" class="controls-window">
+            <div class="controls-content">
+                <div class="controls-header">
+                    <h3>🎮 Game Controls</h3>
+                    <button class="controls-close" id="controlsClose">✖</button>
+                </div>
+                <div class="controls-body" id="controlsBody">
+                    <!-- Controls will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <script type="module">
+            // Debug mode disabled for production
+            // window.DEBUG_MODE = true;
+            import { Game } from './core/Game.js';
+            import { SaveSystem } from './core/SaveSystem.js';
+            import { World } from './world/World.js';
+            import { SecurityUtils } from './utils/SecurityUtils.js';
+
+        // Loading Screen Manager
+        class LoadingScreenManager {
+            constructor() {
+                this.loadingScreen = document.getElementById('loadingScreen');
+                this.progressBar = document.getElementById('loadingProgressBar');
+                this.statusText = document.getElementById('loadingStatus');
+                this.detailsText = document.getElementById('loadingDetails');
+                this.gameContainer = document.querySelector('.game-container');
+                this.isVisible = false;
+                this.progressSteps = [
+                    { progress: 20, status: 'Connecting to server...', details: 'Establishing WebSocket connection' },
+                    { progress: 40, status: 'Authenticating...', details: 'Verifying player credentials' },
+                    { progress: 60, status: 'Loading world data...', details: 'Fetching world configuration' },
+                    { progress: 80, status: 'Synchronizing...', details: 'Syncing with other players' },
+                    { progress: 100, status: 'Connected!', details: 'Welcome to multiplayer!' }
+                ];
+                this.currentStep = 0;
+            }
+
+            show() {
+                // Hide game UI elements immediately
+                if (this.gameContainer) {
+                    this.gameContainer.classList.add('loading');
+                }
+                
+                // Show loading screen
+                this.loadingScreen.classList.add('show');
+                this.isVisible = true;
+                this.startProgressSimulation();
+            }
+
+            hide() {
+                // Hide loading screen
+                this.loadingScreen.classList.remove('show');
+                this.isVisible = false;
+                this.resetProgress();
+                
+                // Show game UI elements
+                if (this.gameContainer) {
+                    this.gameContainer.classList.remove('loading');
+                }
+            }
+
+            startProgressSimulation() {
+                this.currentStep = 0;
+                this.updateProgress(0, 'Initializing connection...', 'Please wait while we connect to the server');
+                
+                // Simulate progress steps
+                const interval = setInterval(() => {
+                    if (this.currentStep < this.progressSteps.length) {
+                        const step = this.progressSteps[this.currentStep];
+                        this.updateProgress(step.progress, step.status, step.details);
+                        this.currentStep++;
+                    } else {
+                        clearInterval(interval);
+                        // Keep at 100% until connection is actually complete
+                        this.updateProgress(100, 'Connected!', 'Welcome to multiplayer!');
+                    }
+                }, 800); // Update every 800ms
+            }
+
+            updateProgress(progress, status, details) {
+                this.progressBar.style.width = `${progress}%`;
+                this.statusText.textContent = status;
+                this.detailsText.textContent = details;
+            }
+
+            resetProgress() {
+                this.progressBar.style.width = '0%';
+                this.statusText.textContent = 'Initializing connection...';
+                this.detailsText.textContent = 'Please wait while we connect to the server';
+                this.currentStep = 0;
+            }
+
+            setRealProgress(progress, status, details) {
+                this.updateProgress(progress, status, details);
+            }
+        }
+
+        // Initialize loading screen manager
+        window.loadingScreenManager = new LoadingScreenManager();
+
+        // Controls system
+        class GameControls {
+            constructor() {
+                this.isOpen = false;
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.populateControls();
+            }
+
+            setupEventListeners() {
+                // Pause bubble click
+                const pauseBubble = document.getElementById('pauseBubble');
+                const compactPauseMenu = document.getElementById('compactPauseMenu');
+                const compactSettingsBtn = document.getElementById('compactSettingsBtn');
+                const compactQuitBtn = document.getElementById('compactQuitBtn');
+
+                pauseBubble.addEventListener('click', () => {
+                    this.toggleCompactPause();
+                });
+
+                // Compact pause menu buttons
+                compactSettingsBtn.addEventListener('click', () => {
+                    this.closeCompactPause();
+                    this.openControls();
+                });
+
+                compactQuitBtn.addEventListener('click', () => {
+                    this.quitToMenu();
+                });
+
+                const controlsWindow = document.getElementById('controlsWindow');
+                const controlsClose = document.getElementById('controlsClose');
+
+                controlsClose.addEventListener('click', () => {
+                    this.closeControls();
+                });
+
+                // Close when clicking outside
+                controlsWindow.addEventListener('click', (e) => {
+                    if (e.target === controlsWindow) {
+                        this.closeControls();
+                    }
+                });
+
+                // Close compact pause menu when clicking outside
+                compactPauseMenu.addEventListener('click', (e) => {
+                    if (e.target === compactPauseMenu) {
+                        this.closeCompactPause();
+                    }
+                });
+            }
+
+            populateControls() {
+                const controlsBody = document.getElementById('controlsBody');
+                const keybinds = this.loadKeybinds();
+                
+                controlsBody.innerHTML = `
+                    <div class="control-category">
+                        <h4>🚶 Movement</h4>
+                        ${this.renderControlItem('Move Up', keybinds.moveUp, true)}
+                        ${this.renderControlItem('Move Down', keybinds.moveDown, true)}
+                        ${this.renderControlItem('Move Left', keybinds.moveLeft, true)}
+                        ${this.renderControlItem('Move Right', keybinds.moveRight, true)}
+                        ${this.renderControlItem('Sprint', keybinds.sprint, true)}
+                        ${this.renderControlItem('Crouch', keybinds.crouch, true)}
+                    </div>
+
+                    <div class="control-category">
+                        <h4>🎮 Game Controls</h4>
+                        ${this.renderControlItem('Pause Game', keybinds.pause, true)}
+                        ${this.renderControlItem('Open Inventory (I)', keybinds.inventory, true)}
+                        ${this.renderControlItem('Interact', keybinds.interact, false)}
+                        ${this.renderControlItem('Main Menu', keybinds.menu, false)}
+                        ${this.renderControlItem('Debug Info', keybinds.debug, true)}
+                        ${this.renderControlItem('Screenshot', keybinds.screenshot, true)}
+                    </div>
+
+                    <div class="control-category">
+                        <h4>📷 Camera</h4>
+                        ${this.renderControlItem('Mouse Look', 'Mouse', true)}
+                        ${this.renderControlItem('Zoom In/Out', 'Scroll Wheel', true)}
+                        ${this.renderControlItem('Zoom In', keybinds.zoomIn, false)}
+                        ${this.renderControlItem('Zoom Out', keybinds.zoomOut, false)}
+                        ${this.renderControlItem('Reset Zoom', keybinds.resetZoom, false)}
+                        ${this.renderControlItem('Camera Lock', keybinds.toggleCameraLock, false)}
+                    </div>
+
+                    <div class="control-category">
+                        <h4>🔊 Audio</h4>
+                        ${this.renderControlItem('Toggle Audio', keybinds.toggleAudio, true)}
+                        ${this.renderControlItem('Volume Up', keybinds.volumeUp, false)}
+                        ${this.renderControlItem('Volume Down', keybinds.volumeDown, false)}
+                    </div>
+                `;
+            }
+
+            renderControlItem(action, key, isImplemented) {
+                const status = isImplemented ? 'implemented' : 'coming-soon';
+                const statusIcon = isImplemented ? '✅' : '🚧';
+                const keyDisplay = this.formatKeyDisplay(key);
+                
+                return `
+                    <div class="control-item">
+                        <span class="control-action">${action}</span>
+                        <div style="display: flex; align-items: center;">
+                            <span class="control-key">${keyDisplay}</span>
+                            <span class="control-status ${status}">${statusIcon}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            formatKeyDisplay(keyCode) {
+                const keyMap = {
+                    'KeyW': 'W', 'KeyA': 'A', 'KeyS': 'S', 'KeyD': 'D',
+                    'KeyE': 'E', 'KeyF': 'F', 'KeyI': 'I', 'KeyM': 'M',
+                    'KeyK': 'K', 'ShiftLeft': 'Shift', 'ControlLeft': 'Ctrl',
+                    'Escape': 'ESC', 'Space': 'Space', 'F1': 'F1', 'F12': 'F12',
+                    'Equal': '=', 'Minus': '-', 'BracketLeft': '[', 'BracketRight': ']'
+                };
+                return keyMap[keyCode] || keyCode;
+            }
+
+            loadKeybinds() {
+                const saved = localStorage.getItem('gameKeybinds');
+                if (saved) {
+                    try {
+                        return JSON.parse(saved);
+                    } catch (e) {
+                        console.error('Failed to load keybinds:', e);
+                    }
+                }
+                
+                // Default keybinds
+                return {
+                    moveUp: 'KeyW', moveDown: 'KeyS', moveLeft: 'KeyA', moveRight: 'KeyD',
+                    sprint: 'ShiftLeft', crouch: 'ControlLeft', pause: 'Escape', inventory: 'KeyI',
+                    interact: 'KeyE', menu: 'KeyM', debug: 'F1', screenshot: 'F12',
+                    zoomIn: 'Equal', zoomOut: 'Minus', resetZoom: 'Digit0', toggleCameraLock: 'KeyC',
+                    toggleAudio: 'KeyK', volumeUp: 'BracketRight', volumeDown: 'BracketLeft'
+                };
+            }
+
+            toggleControls() {
+                if (this.isOpen) {
+                    this.closeControls();
+                } else {
+                    this.openControls();
+                }
+            }
+
+            openControls() {
+                const controlsWindow = document.getElementById('controlsWindow');
+                controlsWindow.classList.add('show');
+                this.isOpen = true;
+            }
+
+            closeControls() {
+                const controlsWindow = document.getElementById('controlsWindow');
+                controlsWindow.classList.remove('show');
+                this.isOpen = false;
+            }
+
+            toggleCompactPause() {
+                const compactPauseMenu = document.getElementById('compactPauseMenu');
+                if (compactPauseMenu.classList.contains('show')) {
+                    this.closeCompactPause();
+                } else {
+                    this.openCompactPause();
+                }
+            }
+
+            openCompactPause() {
+                const compactPauseMenu = document.getElementById('compactPauseMenu');
+                const pauseTitle = document.getElementById('compactPauseTitle');
+                compactPauseMenu.classList.add('show');
+                
+                // Update title based on game mode
+                if (window.game && window.game.isMultiplayer) {
+                    pauseTitle.textContent = 'Game Menu';
+                } else {
+                    pauseTitle.textContent = 'Game Paused';
+                }
+                
+                // Only pause the game in single-player mode
+                if (window.game && !window.game.isMultiplayer) {
+                    window.game.pause();
+                }
+            }
+
+            closeCompactPause() {
+                const compactPauseMenu = document.getElementById('compactPauseMenu');
+                compactPauseMenu.classList.remove('show');
+                
+                // Only resume the game in single-player mode
+                if (window.game && !window.game.isMultiplayer) {
+                    window.game.resume();
+                }
+            }
+
+            quitToMenu() {
+                // Close pause menu
+                this.closeCompactPause();
+                // Navigate to menu
+                window.location.href = 'assets/menu.html';
+            }
+        }
+
+        window.addEventListener('load', async () => {
+            try {
+                // Initialize controls system
+                window.gameControls = new GameControls();
+                
+                let game;
+                let worldConfig = null;
+                let saveData = null;
+
+                // Parse URL parameters
+                const urlParams = new URLSearchParams(window.location.search);
+                const isNewWorld = urlParams.get('new') === 'true';
+                const slotParam = urlParams.get('slot');
+                const customWorldParam = urlParams.get('customWorld');
+                const isMultiplayer = urlParams.get('multiplayer') === 'true';
+
+                // DEBUG: Log URL parameters immediately
+                console.log('🔍 DEBUG: URL parameters detected:', {
+                    isMultiplayer,
+                    customWorldParam,
+                    isNewWorld,
+                    slotParam,
+                    fullURL: window.location.href,
+                    searchParams: window.location.search
+                });
+
+                // If connecting class was set early, start the simulated progress now
+                if (document.documentElement.classList.contains('is-connecting')) {
+                    // Ensure manager is constructed
+                    if (window.loadingScreenManager) {
+                        window.loadingScreenManager.show();
+                    }
+                }
+
+                if (customWorldParam) {
+                    // ✅ SECURITY FIX (VULN-004): Validate URL parameter
+                    // Whitelist of allowed worlds
+                    const ALLOWED_WORLDS = ['tir-na-nog'];
+                    const sanitized = SecurityUtils.validateURLParam(customWorldParam, ALLOWED_WORLDS);
+                    
+                    if (!sanitized) {
+                        console.error('Invalid world parameter:', customWorldParam);
+                        alert(`Invalid world name. Allowed worlds: ${ALLOWED_WORLDS.join(', ')}\n\nUsing default world instead.`);
+                        game = new Game(null, null);
+                    } else {
+                        // Load custom world from file with validated parameter
+                        const worldPath = `worlds/${sanitized}/world.json`;
+                        console.log(`🔍 DEBUG: Loading custom world from: ${worldPath}`);
+                        
+                        const customWorldData = await World.loadFromFile(worldPath);
+                        console.log('🔍 DEBUG: loadFromFile result:', customWorldData);
+                        if (customWorldData) {
+                            game = new Game(null, null, customWorldData);
+                            console.log(`Custom world "${customWorldData.metadata?.name || 'Unknown'}" loaded successfully!`);
+                        } else {
+                            console.error('🔍 DEBUG: loadFromFile returned null, showing error alert');
+                            alert(`Failed to load custom world: ${sanitized}\n\nMake sure you have placed world.json in:\nRunesOfTirNaNog/worlds/${sanitized}/world.json\n\nAnd that the server is running on the correct port.`);
+                            game = new Game(null, null);
+                        }
+                    }
+                } else if (isMultiplayer) {
+                    // Load custom world for multiplayer
+                    console.log('🌍 Loading custom world for multiplayer...');
+                    try {
+                        // Try to load the custom world data from Railway server
+                        console.log('🔍 Fetching world data from: https://web-production-b1ed.up.railway.app/worlds/world.json');
+                        const worldDataResponse = await fetch('https://web-production-b1ed.up.railway.app/worlds/world.json');
+                        console.log('📡 Fetch response status:', worldDataResponse.status, worldDataResponse.statusText);
+                        console.log('📡 Response headers:', Object.fromEntries(worldDataResponse.headers.entries()));
+                        
+                        if (worldDataResponse.ok) {
+                            const customWorldData = await worldDataResponse.json();
+                            console.log('✅ Custom world data loaded successfully:', customWorldData.metadata?.name || 'Tir na nÓg');
+                            console.log('📏 World dimensions:', customWorldData.worldWidth, 'x', customWorldData.worldHeight);
+                            console.log('🧱 Total tiles:', customWorldData.tiles?.length || 0);
+                            console.log('🎮 Creating game with custom world data...');
+                            game = new Game(null, null, customWorldData);
+                        } else {
+                            console.warn('⚠️ Could not load custom world (HTTP', worldDataResponse.status, '), using default');
+                            console.warn('🔄 Falling back to default world generation');
+                            const responseText = await worldDataResponse.text();
+                            console.warn('📄 Response body:', responseText);
+                            game = new Game(null, null);
+                        }
+                    } catch (error) {
+                        console.warn('❌ Error loading custom world:', error);
+                        console.warn('🔄 Using default world instead');
+                        console.warn('❌ Error details:', error.message, error.stack);
+                        game = new Game(null, null);
+                    }
+                } else if (isNewWorld) {
+                    // Load world config from sessionStorage
+                    const configJson = sessionStorage.getItem('worldConfig');
+                    if (configJson) {
+                        worldConfig = JSON.parse(configJson);
+                        
+                        // Prompt for save slot
+                        const slot = prompt('Save to slot (1 or 2):');
+                        const slotNum = parseInt(slot);
+                        if (slotNum === 1 || slotNum === 2) {
+                            game = new Game(worldConfig, null);
+                            game.saveSlot = slotNum;
+                        } else {
+                            game = new Game(worldConfig, null);
+                        }
+                        
+                        // Clear session storage
+                        sessionStorage.removeItem('worldConfig');
+                    } else {
+                        game = new Game(null, null);
+                    }
+                } else if (slotParam) {
+                    // Load from save slot
+                    const slotNum = parseInt(slotParam);
+                    if (slotNum >= 1 && slotNum <= SaveSystem.MAX_SLOTS) {
+                        saveData = SaveSystem.loadWorld(slotNum);
+                        if (saveData) {
+                            game = new Game(null, saveData);
+                            game.saveSlot = slotNum;
+                        } else {
+                            console.error(`No save data found in slot ${slotNum}`);
+                            game = new Game(null, null);
+                        }
+                    } else {
+                        console.error('Invalid slot number');
+                        game = new Game(null, null);
+                    }
+                } else {
+                    // No parameters, create default world
+                    game = new Game(null, null);
+                }
+
+                window.game = game;
+
+                // Initialize chat system for multiplayer
+                if (isMultiplayer) {
+                    initializeChatSystem(game);
+                    
+                    // Connect to multiplayer server
+                    console.log('Multiplayer mode enabled - connecting to server...');
+                    game.connectToMultiplayer().then(success => {
+                        if (success) {
+                            console.log('✅ Successfully connected to multiplayer server');
+                            // Hide loading screen after successful connection
+                            setTimeout(() => {
+                                window.loadingScreenManager.hide();
+                                document.documentElement.classList.remove('is-connecting');
+                            }, 1000); // Small delay to show "Connected!" message
+                        } else {
+                            console.error('❌ Failed to connect to multiplayer server');
+                            console.error('Make sure the WebSocket server is running on wss://web-production-b1ed.up.railway.app/ws');
+                            // Hide loading screen even on failure
+                            window.loadingScreenManager.hide();
+                            document.documentElement.classList.remove('is-connecting');
+                        }
+                    }).catch(error => {
+                        console.error('❌ Multiplayer connection error:', error);
+                        console.error('Make sure the WebSocket server is running on wss://web-production-b1ed.up.railway.app/ws');
+                        // Hide loading screen on error
+                        window.loadingScreenManager.hide();
+                        document.documentElement.classList.remove('is-connecting');
+                    });
+                }
+
+                // Initialize mobile controls
+                initializeMobileControls(game);
+
+                // Make functions globally available for debugging
+                window.setPlayerName = (name) => game.setPlayerName(name);
+                window.getPlayerName = () => game.getPlayerName();
+                window.connectMultiplayer = () => game.connectToMultiplayer();
+                window.disconnectMultiplayer = () => game.disconnectFromMultiplayer();
+                
+                // Debug functions for multiplayer sync
+                window.debugMultiplayer = () => {
+                    console.log('=== MULTIPLAYER DEBUG INFO ===');
+                    console.log('Local player name:', game.getPlayerName());
+                    console.log('Stored username:', localStorage.getItem('runes_username'));
+                    console.log('Is multiplayer:', game.isMultiplayer);
+                    console.log('Network status:', game.networkManager?.getConnectionStatus());
+                    console.log('Other players:', game.networkManager?.getOtherPlayers());
+                    console.log('Local player position:', { x: game.player.x, y: game.player.y });
+                    console.log('==============================');
+                };
+                
+                window.syncPlayerNames = () => {
+                    const username = localStorage.getItem('runes_username');
+                    if (username) {
+                        game.setPlayerName(username);
+                        console.log(`Synchronized player name to: ${username}`);
+                    } else {
+                        console.log('No username in localStorage');
+                    }
+                };
+                window.getNetworkStatus = () => {
+                    if (game.networkManager) {
+                        return {
+                            isConnected: game.networkManager.isConnected,
+                            socket: game.networkManager.socket?.readyState,
+                            playerId: game.networkManager.playerId
+                        };
+                    }
+                    return { error: 'NetworkManager not found' };
+                };
+
+                console.log('Runes of Tir na nÓg - Game initialized successfully');
+                console.log('Components loaded:', {
+                    Player: '✓',
+                    Input: '✓',
+                    World: '✓',
+                    Camera: '✓',
+                    UI: '✓',
+                    GameLoop: '✓',
+                    NameTag: '✓',
+                    SaveSystem: '✓'
+                });
+                console.log('Player name:', game.getPlayerName());
+                console.log('Try: setPlayerName("Your Name") to change the player name');
+            } catch (error) {
+                console.error('Failed to initialize game:', error);
+            }
+        });
+
+        // Pause when window loses focus
+        document.addEventListener('visibilitychange', () => {
+            if (window.game) {
+                if (document.hidden) {
+                    // In multiplayer, don't pause to avoid sync issues
+                    if (!window.game.isMultiplayer) {
+                        window.game.pause();
+                    }
+                } else {
+                    // Only resume if we're actually paused
+                    if (window.game.isPaused) {
+                        window.game.resume();
+                    }
+                }
+            }
+        });
+
+        // Chat System
+        class ChatManager {
+            constructor(game) {
+                this.game = game;
+                this.chatContainer = document.getElementById('chatContainer');
+                this.chatMessages = document.getElementById('chatMessages');
+                this.chatInput = document.getElementById('chatInput');
+                this.chatSend = document.getElementById('chatSend');
+                this.chatCloseBtn = document.getElementById('chatCloseBtn');
+                this.isChatOpen = false;
+                
+                this.setupEventListeners();
+                this.setupNetworkCallbacks();
+            }
+            
+            setupEventListeners() {
+                // T key to toggle chat
+                document.addEventListener('keydown', (e) => {
+                    if (e.key.toLowerCase() === 't' && !this.isChatOpen) {
+                        e.preventDefault();
+                        this.openChat();
+                    } else if (e.key === 'Escape' && this.isChatOpen) {
+                        e.preventDefault();
+                        this.closeChat();
+                    }
+                });
+                
+                // Send button click
+                this.chatSend.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.sendMessage();
+                });
+                
+                // Close button click
+                this.chatCloseBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.closeChat();
+                });
+                
+                // Enter key to send message
+                this.chatInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                // Click outside chat to close (mobile-friendly)
+                document.addEventListener('click', (e) => {
+                    if (this.isChatOpen && !this.chatContainer.contains(e.target) && !e.target.closest('.mobile-chat-btn')) {
+                        this.closeChat();
+                    }
+                });
+
+                // Touch outside chat to close (mobile-specific)
+                document.addEventListener('touchstart', (e) => {
+                    if (this.isChatOpen && !this.chatContainer.contains(e.target) && !e.target.closest('.mobile-chat-btn')) {
+                        e.preventDefault();
+                        this.closeChat();
+                    }
+                }, { passive: false });
+            }
+            
+            setupNetworkCallbacks() {
+                if (this.game.networkManager) {
+                    this.game.networkManager.onChatMessage = (data) => {
+                        console.log('📨 Chat message received:', data);
+                        // Handle different possible field names from server
+                        const username = data.username || data.player_name || data.name || 'Unknown';
+                        const message = data.message || data.text || data.content || '';
+                        this.addMessage(username, message, 'player');
+                    };
+                    
+                    this.game.networkManager.onChatHistory = (data) => {
+                        console.log('📚 Chat history received:', data);
+                        data.messages.forEach(msg => {
+                            const username = msg.username || msg.player_name || msg.name || 'Unknown';
+                            const message = msg.message || msg.text || msg.content || '';
+                            this.addMessage(username, message, msg.type || 'player');
+                        });
+                    };
+                }
+            }
+            
+            openChat() {
+                this.chatContainer.style.display = 'flex';
+                this.chatInput.focus();
+                this.isChatOpen = true;
+            }
+            
+            closeChat() {
+                this.chatContainer.style.display = 'none';
+                this.chatInput.value = '';
+                this.chatInput.blur(); // Remove focus to hide keyboard
+                this.isChatOpen = false;
+            }
+            
+            sendMessage() {
+                const message = this.chatInput.value.trim();
+                if (message && this.game.networkManager) {
+                    this.game.networkManager.sendChatMessage(message);
+                    this.chatInput.value = '';
+                }
+            }
+            
+            addMessage(username, message, type = 'player') {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `chat-message ${type}`;
+                
+                if (type === 'system') {
+                    messageDiv.textContent = message;
+                } else {
+                    messageDiv.innerHTML = `<span class="username">${username}:</span> ${message}`;
+                }
+                
+                this.chatMessages.appendChild(messageDiv);
+                this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+                
+                // Keep only last 50 messages
+                while (this.chatMessages.children.length > 50) {
+                    this.chatMessages.removeChild(this.chatMessages.firstChild);
+                }
+            }
+        }
+        
+        function initializeChatSystem(game) {
+            window.chatManager = new ChatManager(game);
+            console.log('Chat system initialized - Press T to open chat');
+        }
+
+        // Mobile Controls System
+        class MobileControlsManager {
+            constructor(game) {
+                this.game = game;
+                this.mobileControls = document.getElementById('mobileControls');
+                this.dpadButtons = document.querySelectorAll('.dpad-btn');
+                this.mobileChatBtn = document.getElementById('mobileChatBtn');
+                this.fullscreenBtn = document.getElementById('fullscreenBtn');
+                this.mobileZoomControls = document.getElementById('mobileZoomControls');
+                this.zoomInBtn = document.getElementById('zoomInBtn');
+                this.zoomOutBtn = document.getElementById('zoomOutBtn');
+                this.isFullscreen = false;
+                
+                this.setupEventListeners();
+                this.detectMobileDevice();
+            }
+            
+            setupEventListeners() {
+                // D-pad button events
+                this.dpadButtons.forEach(btn => {
+                    const direction = btn.dataset.direction;
+                    
+                    // Touch events
+                    btn.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        this.handleDpadPress(direction, true);
+                    });
+                    
+                    btn.addEventListener('touchend', (e) => {
+                        e.preventDefault();
+                        this.handleDpadPress(direction, false);
+                    });
+                    
+                    // Mouse events (for testing on desktop)
+                    btn.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        this.handleDpadPress(direction, true);
+                    });
+                    
+                    btn.addEventListener('mouseup', (e) => {
+                        e.preventDefault();
+                        this.handleDpadPress(direction, false);
+                    });
+                    
+                    // Prevent context menu
+                    btn.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                    });
+                });
+                
+                // Mobile chat button
+                this.mobileChatBtn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.openMobileChat();
+                });
+                
+                this.mobileChatBtn.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.openMobileChat();
+                });
+
+                // Also add click event for better compatibility
+                this.mobileChatBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.openMobileChat();
+                });
+
+                // Fullscreen button events
+                this.fullscreenBtn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    this.toggleFullscreen();
+                });
+                
+                this.fullscreenBtn.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    this.toggleFullscreen();
+                });
+
+                // Zoom button events
+                this.zoomInBtn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    this.handleZoomIn();
+                });
+                
+                this.zoomInBtn.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    this.handleZoomIn();
+                });
+
+                this.zoomOutBtn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    this.handleZoomOut();
+                });
+                
+                this.zoomOutBtn.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    this.handleZoomOut();
+                });
+
+                // Listen for fullscreen changes
+                document.addEventListener('fullscreenchange', () => {
+                    this.isFullscreen = !!document.fullscreenElement;
+                    this.updateFullscreenButton();
+                });
+
+                document.addEventListener('webkitfullscreenchange', () => {
+                    this.isFullscreen = !!document.webkitFullscreenElement;
+                    this.updateFullscreenButton();
+                });
+
+                document.addEventListener('mozfullscreenchange', () => {
+                    this.isFullscreen = !!document.mozFullScreenElement;
+                    this.updateFullscreenButton();
+                });
+
+                document.addEventListener('MSFullscreenChange', () => {
+                    this.isFullscreen = !!document.msFullscreenElement;
+                    this.updateFullscreenButton();
+                });
+            }
+            
+            handleDpadPress(direction, pressed) {
+                if (this.game.input) {
+                    this.game.input.setMobileDpadState(direction, pressed);
+                }
+            }
+            
+            openMobileChat() {
+                if (window.chatManager) {
+                    window.chatManager.openChat();
+                }
+            }
+
+            handleZoomIn() {
+                if (this.game.camera) {
+                    // Simulate scroll wheel zoom in (negative delta for zoom in)
+                    this.game.input.mouse.scrollDelta = -100;
+                    console.log('Mobile zoom in triggered');
+                }
+            }
+
+            handleZoomOut() {
+                if (this.game.camera) {
+                    // Simulate scroll wheel zoom out (positive delta for zoom out)
+                    this.game.input.mouse.scrollDelta = 100;
+                    console.log('Mobile zoom out triggered');
+                }
+            }
+
+            toggleFullscreen() {
+                if (!this.isFullscreen) {
+                    this.enterFullscreen();
+                } else {
+                    this.exitFullscreen();
+                }
+            }
+
+            enterFullscreen() {
+                const element = document.documentElement;
+                
+                if (element.requestFullscreen) {
+                    element.requestFullscreen();
+                } else if (element.webkitRequestFullscreen) {
+                    element.webkitRequestFullscreen();
+                } else if (element.mozRequestFullScreen) {
+                    element.mozRequestFullScreen();
+                } else if (element.msRequestFullscreen) {
+                    element.msRequestFullscreen();
+                }
+            }
+
+            exitFullscreen() {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+
+            updateFullscreenButton() {
+                if (this.fullscreenBtn) {
+                    this.fullscreenBtn.title = this.isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen';
+                    // Update CSS pseudo-element content
+                    this.fullscreenBtn.style.setProperty('--icon', this.isFullscreen ? '"⛶"' : '"⛶"');
+                }
+            }
+            
+            detectMobileDevice() {
+                // Show mobile controls on touch devices
+                if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+                    this.mobileControls.style.display = 'flex';
+                    this.fullscreenBtn.style.display = 'flex';
+                    this.mobileZoomControls.style.display = 'flex';
+                    console.log('Mobile controls enabled - Touch device detected');
+                } else {
+                    console.log('Desktop device detected - Mobile controls hidden');
+                }
+            }
+        }
+        
+        function initializeMobileControls(game) {
+            window.mobileControlsManager = new MobileControlsManager(game);
+        }
+    </script>
+</body>
+</html>
