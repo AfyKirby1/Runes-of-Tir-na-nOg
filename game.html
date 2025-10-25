@@ -570,6 +570,151 @@
             flex-direction: column;
         }
 
+        /* Chat Bubble System Styles */
+        .chat-bubble {
+            position: absolute;
+            background: linear-gradient(145deg, #2a2a3e, #1a1a2e);
+            border: 2px solid #d4af37;
+            border-radius: 12px;
+            padding: 8px 12px;
+            max-width: 200px;
+            min-width: 80px;
+            z-index: 1500;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6),
+                        0 0 20px rgba(212, 175, 55, 0.3);
+        }
+
+        .chat-bubble.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .chat-bubble::before {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid #d4af37;
+        }
+
+        .chat-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid #2a2a3e;
+        }
+
+        .chat-bubble-text {
+            color: #d4d4f4;
+            font-family: 'Cinzel', serif;
+            font-size: 12px;
+            font-weight: 400;
+            line-height: 1.3;
+            text-align: center;
+            word-wrap: break-word;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        .chat-bubble-username {
+            color: #d4af37;
+            font-weight: 700;
+            font-size: 10px;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        .chat-bubble.system {
+            background: linear-gradient(145deg, #3a2a2a, #2a1a1a);
+            border-color: #8b7355;
+        }
+
+        .chat-bubble.system::after {
+            border-top-color: #3a2a2a;
+        }
+
+        .chat-bubble.system .chat-bubble-text {
+            color: #8b7355;
+            font-style: italic;
+        }
+
+        .chat-bubble.player {
+            background: linear-gradient(145deg, #2a3a2a, #1a2a1a);
+            border-color: #4ade80;
+        }
+
+        .chat-bubble.player::after {
+            border-top-color: #2a3a2a;
+        }
+
+        .chat-bubble.player .chat-bubble-text {
+            color: #4ade80;
+        }
+
+        .chat-bubble.self {
+            background: linear-gradient(145deg, #2a2a3e, #1a1a2e);
+            border-color: #ffd700;
+        }
+
+        .chat-bubble.self::after {
+            border-top-color: #2a2a3e;
+        }
+
+        .chat-bubble.self .chat-bubble-text {
+            color: #ffd700;
+        }
+
+        /* Chat bubble animations */
+        @keyframes chatBubbleAppear {
+            0% {
+                opacity: 0;
+                transform: translateY(10px) scale(0.8);
+            }
+            50% {
+                opacity: 0.8;
+                transform: translateY(-2px) scale(1.05);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes chatBubbleDisappear {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-10px) scale(0.8);
+            }
+        }
+
+        .chat-bubble.appearing {
+            animation: chatBubbleAppear 0.4s ease-out;
+        }
+
+        .chat-bubble.disappearing {
+            animation: chatBubbleDisappear 0.3s ease-in;
+        }
+
         .chat-messages {
             flex: 1;
             padding: 10px;
@@ -1610,6 +1755,11 @@
                 this.chatCloseBtn = document.getElementById('chatCloseBtn');
                 this.isChatOpen = false;
                 
+                // Chat bubble system
+                this.chatBubbles = new Map(); // playerId -> bubble element
+                this.bubbleDuration = 5000; // 5 seconds
+                this.maxBubbles = 5; // Maximum concurrent bubbles
+                
                 this.setupEventListeners();
                 this.setupNetworkCallbacks();
             }
@@ -1742,6 +1892,114 @@
                 while (this.chatMessages.children.length > 50) {
                     this.chatMessages.removeChild(this.chatMessages.firstChild);
                 }
+                
+                // Create chat bubble above character
+                this.createChatBubble(username, message, type);
+            }
+            
+            createChatBubble(username, message, type = 'player') {
+                // Remove existing bubble for this player
+                if (this.chatBubbles.has(username)) {
+                    this.removeChatBubble(username);
+                }
+                
+                // Limit concurrent bubbles
+                if (this.chatBubbles.size >= this.maxBubbles) {
+                    const firstPlayer = this.chatBubbles.keys().next().value;
+                    this.removeChatBubble(firstPlayer);
+                }
+                
+                // Create bubble element
+                const bubble = document.createElement('div');
+                bubble.className = `chat-bubble ${type}`;
+                
+                // Add username if not system message
+                if (type !== 'system') {
+                    const usernameDiv = document.createElement('div');
+                    usernameDiv.className = 'chat-bubble-username';
+                    usernameDiv.textContent = username;
+                    bubble.appendChild(usernameDiv);
+                }
+                
+                // Add message text
+                const textDiv = document.createElement('div');
+                textDiv.className = 'chat-bubble-text';
+                textDiv.textContent = message;
+                bubble.appendChild(textDiv);
+                
+                // Position bubble above character
+                this.positionChatBubble(bubble, username);
+                
+                // Add to DOM
+                document.body.appendChild(bubble);
+                this.chatBubbles.set(username, bubble);
+                
+                // Animate appearance
+                setTimeout(() => {
+                    bubble.classList.add('show', 'appearing');
+                }, 10);
+                
+                // Auto-remove after duration
+                setTimeout(() => {
+                    this.removeChatBubble(username);
+                }, this.bubbleDuration);
+            }
+            
+            positionChatBubble(bubble, username) {
+                // Get character position
+                let characterX = 0;
+                let characterY = 0;
+                
+                if (username === this.game.player?.getName()) {
+                    // Local player
+                    characterX = this.game.player.x;
+                    characterY = this.game.player.y;
+                } else if (this.game.networkManager && this.game.networkManager.otherPlayers[username]) {
+                    // Other player
+                    const player = this.game.networkManager.otherPlayers[username];
+                    characterX = player.x;
+                    characterY = player.y;
+                } else {
+                    // Default position (center of screen)
+                    characterX = this.game.canvas.width / 2;
+                    characterY = this.game.canvas.height / 2;
+                }
+                
+                // Convert world coordinates to screen coordinates
+                const screenX = characterX - this.game.camera.x;
+                const screenY = characterY - this.game.camera.y - 40; // Above character
+                
+                // Position bubble
+                bubble.style.left = `${screenX}px`;
+                bubble.style.top = `${screenY}px`;
+                bubble.style.transform = `translateX(-50%)`;
+            }
+            
+            removeChatBubble(username) {
+                if (this.chatBubbles.has(username)) {
+                    const bubble = this.chatBubbles.get(username);
+                    bubble.classList.add('disappearing');
+                    
+                    setTimeout(() => {
+                        if (bubble.parentNode) {
+                            bubble.parentNode.removeChild(bubble);
+                        }
+                        this.chatBubbles.delete(username);
+                    }, 300);
+                }
+            }
+            
+            updateChatBubblePositions() {
+                // Update positions of all chat bubbles based on camera movement
+                this.chatBubbles.forEach((bubble, username) => {
+                    this.positionChatBubble(bubble, username);
+                });
+            }
+            
+            clearAllChatBubbles() {
+                this.chatBubbles.forEach((bubble, username) => {
+                    this.removeChatBubble(username);
+                });
             }
         }
         

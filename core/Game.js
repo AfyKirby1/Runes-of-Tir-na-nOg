@@ -289,6 +289,11 @@ export class Game {
         // Update UI with camera zoom info and debug data (if available)
         const cameraDebug = this.camera.getDebugInfo(playerPos.x, playerPos.y);
         this.ui.update(playerPos.x, playerPos.y, deltaTime, this.camera.getZoomLevel(), cameraDebug);
+        
+        // Update chat bubble positions
+        if (window.chatManager && window.chatManager.updateChatBubblePositions) {
+            window.chatManager.updateChatBubblePositions();
+        }
     }
 
     render(alpha) {
