@@ -583,7 +583,7 @@
             pointer-events: none;
             opacity: 0;
             transform: translateY(10px);
-            transition: all 0.3s ease;
+            transition: opacity 0.3s ease;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6),
                         0 0 20px rgba(212, 175, 55, 0.3);
         }
@@ -1927,17 +1927,17 @@
                 textDiv.textContent = message;
                 bubble.appendChild(textDiv);
                 
-                // Position bubble above character
-                this.positionChatBubble(bubble, username);
+                // Position bubble immediately above player
+                this.positionBubbleAbovePlayer(bubble, username);
+                
+                // Make sure bubble is visible
+                bubble.style.opacity = '1';
+                bubble.style.display = 'block';
                 
                 // Add to DOM
                 document.body.appendChild(bubble);
                 this.chatBubbles.set(username, bubble);
                 
-                // Animate appearance
-                setTimeout(() => {
-                    bubble.classList.add('show', 'appearing');
-                }, 10);
                 
                 // Auto-remove after duration
                 setTimeout(() => {
@@ -1945,31 +1945,30 @@
                 }, this.bubbleDuration);
             }
             
-            positionChatBubble(bubble, username) {
-                // Get character position
-                let characterX = 0;
-                let characterY = 0;
+            positionBubbleAbovePlayer(bubble, username) {
+                // Get player position
+                let playerX = 0;
+                let playerY = 0;
                 
                 if (username === this.game.player?.getName()) {
                     // Local player
-                    characterX = this.game.player.x;
-                    characterY = this.game.player.y;
+                    playerX = this.game.player.x;
+                    playerY = this.game.player.y;
                 } else if (this.game.networkManager && this.game.networkManager.otherPlayers[username]) {
                     // Other player
                     const player = this.game.networkManager.otherPlayers[username];
-                    characterX = player.x;
-                    characterY = player.y;
+                    playerX = player.x;
+                    playerY = player.y;
                 } else {
-                    // Default position (center of screen)
-                    characterX = this.game.canvas.width / 2;
-                    characterY = this.game.canvas.height / 2;
+                    return; // Don't show bubble if no player found
                 }
                 
                 // Convert world coordinates to screen coordinates
-                const screenX = characterX - this.game.camera.x;
-                const screenY = characterY - this.game.camera.y - 40; // Above character
+                const screenX = (playerX - this.game.camera.x) * this.game.camera.zoom;
+                const screenY = (playerY - this.game.camera.y) * this.game.camera.zoom - 80; // Moved up more to avoid overlapping player
                 
-                // Position bubble
+                
+                // Position bubble centered above player
                 bubble.style.left = `${screenX}px`;
                 bubble.style.top = `${screenY}px`;
                 bubble.style.transform = `translateX(-50%)`;
@@ -1978,21 +1977,17 @@
             removeChatBubble(username) {
                 if (this.chatBubbles.has(username)) {
                     const bubble = this.chatBubbles.get(username);
-                    bubble.classList.add('disappearing');
-                    
-                    setTimeout(() => {
-                        if (bubble.parentNode) {
-                            bubble.parentNode.removeChild(bubble);
-                        }
-                        this.chatBubbles.delete(username);
-                    }, 300);
+                    if (bubble.parentNode) {
+                        bubble.parentNode.removeChild(bubble);
+                    }
+                    this.chatBubbles.delete(username);
                 }
             }
             
             updateChatBubblePositions() {
-                // Update positions of all chat bubbles based on camera movement
+                // Update positions of all chat bubbles to follow players
                 this.chatBubbles.forEach((bubble, username) => {
-                    this.positionChatBubble(bubble, username);
+                    this.positionBubbleAbovePlayer(bubble, username);
                 });
             }
             

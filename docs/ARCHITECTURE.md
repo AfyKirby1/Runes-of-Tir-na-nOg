@@ -177,6 +177,73 @@ export class GameLoop {
 - Animation frame synchronization
 - Performance optimization with accumulator pattern
 
+#### ChatManager.js - Chat Bubble System (game.html)
+
+The ChatManager class provides a comprehensive chat system with above-character speech bubbles for immersive multiplayer communication.
+
+```javascript
+class ChatManager {
+    constructor(game) {
+        this.game = game;
+        this.chatContainer = document.getElementById('chatContainer');
+        this.chatMessages = document.getElementById('chatMessages');
+        this.chatInput = document.getElementById('chatInput');
+        this.chatSend = document.getElementById('chatSend');
+        this.chatCloseBtn = document.getElementById('chatCloseBtn');
+        this.isChatOpen = false;
+        
+        // Chat bubble system
+        this.chatBubbles = new Map(); // playerId -> bubble element
+        this.bubbleDuration = 5000; // 5 seconds
+        this.maxBubbles = 5; // Maximum concurrent bubbles
+        
+        this.setupEventListeners();
+        this.setupNetworkCallbacks();
+    }
+```
+
+**Key Features:**
+- **Above-Character Speech Bubbles**: Medieval-styled bubbles that appear above players
+- **Automatic Positioning**: Bubbles follow players as they move around the world
+- **Duration Management**: 5-second display duration with automatic cleanup
+- **Concurrent Limits**: Maximum 5 bubbles to prevent screen clutter
+- **Medieval Styling**: Dark theme with golden borders and Celtic typography
+- **Multiplayer Integration**: Real-time chat with server synchronization
+- **Input Blocking**: Prevents game actions while typing in chat
+
+**Chat Bubble Styling:**
+```css
+.chat-bubble {
+    position: absolute;
+    background: linear-gradient(145deg, #2a2a3e, #1a1a2e);
+    border: 2px solid #d4af37;
+    border-radius: 12px;
+    padding: 8px 12px;
+    max-width: 200px;
+    min-width: 80px;
+    z-index: 1500;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6),
+                0 0 20px rgba(212, 175, 55, 0.3);
+}
+```
+
+**Bubble Management Methods:**
+- `createChatBubble(username, message, type)` - Creates and positions new bubble
+- `positionBubbleAbovePlayer(bubble, username)` - Calculates screen position
+- `removeChatBubble(username)` - Removes specific bubble
+- `updateChatBubblePositions()` - Updates all bubble positions
+- `clearAllChatBubbles()` - Cleans up all bubbles
+
+**Integration Points:**
+- **Game Loop**: Updates bubble positions every frame
+- **Network Manager**: Receives chat messages from server
+- **Input System**: Blocks game actions while chat is open
+- **Camera System**: Converts world coordinates to screen coordinates
+
 #### NetworkManager.js - Multiplayer Communication (587 lines)
 ```javascript
 export class NetworkManager {

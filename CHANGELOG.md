@@ -12,6 +12,8 @@ All notable changes to this project will be documented in this file.
 - **Floating Damage Numbers**: Animated damage numbers that float upward and fade out
 - **Visual Attack Effects**: RuneScape Classic-style weapon swings and claw attacks
 - **NPC Health Tracking**: Real-time health monitoring with death states
+- **Chat Bubble System**: Above-character speech bubbles with medieval styling and animations
+- **Chat Bubble Management**: Automatic positioning, duration control, and concurrent bubble limits
 - **Mobile Loading Screen**: Comprehensive loading screen for multiplayer connections with progress simulation
 - **Mobile Zoom Controls**: Touch-friendly zoom in/out buttons for mobile devices
 - **Mobile Default Zoom**: Automatic maximum zoom on touch devices for better mobile experience

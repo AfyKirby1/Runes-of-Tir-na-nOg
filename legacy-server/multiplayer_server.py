@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 class GameServer:
     def __init__(self):
-        self.players: Dict[str, Dict] = {}  # {player_id: {name, x, y, color, connected_at}}
+        self.players: Dict[str, Dict] = {}  # {player_id: {name, x, y, color, connected_at, last_ping}}
         self.npcs: Dict[str, Dict] = {}  # {npc_id: {name, x, y, health, behavior, etc.}}
         self.game_state = {
             'world_data': None,
@@ -36,12 +36,16 @@ class GameServer:
             '#f97316'   # Orange-red
         ]
         self.used_colors: Set[str] = set()
+        self.username_to_player_id: Dict[str, str] = {}  # Track username -> player_id mapping
         
         # Load world data
         self.load_world_data()
         
         # Initialize NPCs from world data
         self.initialize_npcs()
+        
+        # Start cleanup task
+        self.start_cleanup_task()
     
     def load_world_data(self):
         """Load the Tir na nÓg world data"""
@@ -103,6 +107,62 @@ class GameServer:
         """Release a player color when they disconnect"""
         self.used_colors.discard(color)
     
+    def start_cleanup_task(self):
+        """Start background task to clean up inactive players"""
+        async def cleanup_inactive_players():
+            while True:
+                try:
+                    await asyncio.sleep(30)  # Check every 30 seconds
+                    current_time = datetime.now()
+                    inactive_players = []
+                    
+                    for player_id, player_data in self.players.items():
+                        last_ping = player_data.get('last_ping')
+                        if last_ping:
+                            # If no ping for 2 minutes, consider inactive
+                            time_diff = (current_time - datetime.fromisoformat(last_ping)).total_seconds()
+                            if time_diff > 120:  # 2 minutes
+                                inactive_players.append(player_id)
+                    
+                    # Remove inactive players
+                    for player_id in inactive_players:
+                        await self.force_disconnect_player(player_id, "Inactive timeout")
+                        logger.info(f"Cleaned up inactive player: {player_id}")
+                        
+                except Exception as e:
+                    logger.error(f"Error in cleanup task: {e}")
+                    await asyncio.sleep(60)  # Wait longer on error
+        
+        # Start the cleanup task
+        asyncio.create_task(cleanup_inactive_players())
+    
+    async def force_disconnect_player(self, player_id, reason="Force disconnect"):
+        """Force disconnect a player and clean up their data"""
+        if player_id in self.players:
+            player_data = self.players[player_id]
+            username = player_data.get('name')
+            color = player_data.get('color')
+            
+            # Remove from username mapping
+            if username in self.username_to_player_id:
+                del self.username_to_player_id[username]
+            
+            # Release color
+            self.release_color(color)
+            
+            # Remove player
+            del self.players[player_id]
+            
+            # Notify other players
+            await self.broadcast_to_all({
+                'type': 'player_left',
+                'player_id': player_id,
+                'player_name': username,
+                'reason': reason
+            })
+            
+            logger.info(f"Force disconnected player {username} ({player_id}): {reason}")
+    
     def validate_username(self, username: str) -> bool:
         """Validate username according to game rules"""
         if not username or len(username) < 1 or len(username) > 20:
@@ -130,6 +190,9 @@ class GameServer:
                     elif message_type == 'position_update':
                         await self.handle_position_update(player_id, data)
                     elif message_type == 'ping':
+                        # Update last ping time for this player
+                        if player_id and player_id in self.players:
+                            self.players[player_id]['last_ping'] = datetime.now().isoformat()
                         await self.send_to_player(websocket, {'type': 'pong', 'timestamp': data.get('timestamp')})
                     elif message_type == 'npc_interact':
                         await self.handle_npc_interaction(player_id, data)
@@ -164,11 +227,21 @@ class GameServer:
             await self.send_error(websocket, "Invalid username")
             return None
         
-        # Check if username is already taken
-        for player_data in self.players.values():
-            if player_data.get('name') == username:
-                await self.send_error(websocket, "Username already taken")
-                return None
+        # Check if username is already taken by an active player
+        if username in self.username_to_player_id:
+            existing_player_id = self.username_to_player_id[username]
+            if existing_player_id in self.players:
+                # Check if the existing player is actually connected
+                existing_player = self.players[existing_player_id]
+                try:
+                    # Try to ping the existing connection
+                    await self.send_to_player(existing_player['websocket'], {'type': 'ping_check'})
+                    await self.send_error(websocket, "Username already taken")
+                    return None
+                except:
+                    # Existing player is not responding, clean them up
+                    logger.info(f"Cleaning up unresponsive player with username: {username}")
+                    await self.force_disconnect_player(existing_player_id, "Connection lost")
         
         # Check player limit
         if len(self.players) >= self.game_state['max_players']:
@@ -186,8 +259,12 @@ class GameServer:
             'y': 100,
             'color': player_color,
             'connected_at': datetime.now().isoformat(),
+            'last_ping': datetime.now().isoformat(),
             'websocket': websocket
         }
+        
+        # Track username mapping
+        self.username_to_player_id[username] = player_id
         
         logger.info(f"Player {username} ({player_id}) joined successfully. Total players: {len(self.players)}")
         

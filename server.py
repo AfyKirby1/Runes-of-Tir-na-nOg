@@ -9,7 +9,7 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/':
             # Serve landing page at root
-            self.path = '/landing.html'
+            self.path = '/index.html'
         return super().do_GET()
 
     def end_headers(self):
@@ -20,7 +20,7 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 def start_multiplayer_server():
     """Start the multiplayer WebSocket server in a separate process"""
     try:
-        server_dir = os.path.join(os.path.dirname(__file__), 'server')
+        server_dir = os.path.join(os.path.dirname(__file__), 'legacy-server')
         subprocess.Popen(['python', 'multiplayer_server.py'], cwd=server_dir)
         print("Multiplayer server started on ws://localhost:1234")
     except Exception as e:

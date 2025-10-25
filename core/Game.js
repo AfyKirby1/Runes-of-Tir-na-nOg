@@ -290,7 +290,7 @@ export class Game {
         const cameraDebug = this.camera.getDebugInfo(playerPos.x, playerPos.y);
         this.ui.update(playerPos.x, playerPos.y, deltaTime, this.camera.getZoomLevel(), cameraDebug);
         
-        // Update chat bubble positions
+        // Update chat bubble positions to follow players
         if (window.chatManager && window.chatManager.updateChatBubblePositions) {
             window.chatManager.updateChatBubblePositions();
         }
