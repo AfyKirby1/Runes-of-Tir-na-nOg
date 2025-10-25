@@ -1,3 +1,21 @@
+# ⚠️ PROPRIETARY SOFTWARE - ALL RIGHTS RESERVED ⚠️
+
+## 🚫 COPYRIGHT NOTICE - NO PERMISSIONS GRANTED
+
+**THIS SOFTWARE IS THE EXCLUSIVE PROPERTY OF DCS**
+
+- ❌ **NO MODIFICATION** - You may not modify, alter, or create derivative works
+- ❌ **NO DISTRIBUTION** - You may not distribute, share, or redistribute this software
+- ❌ **NO REPRODUCTION** - You may not reproduce or copy this software
+- ❌ **NO COMMERCIAL USE** - You may not use this software for commercial purposes
+- ❌ **NO DOWNLOADS** - You may not download or save copies of this software
+- ❌ **NO FORKING** - You may not fork this repository
+- ❌ **NO CONTRIBUTIONS** - You may not contribute code or submit pull requests
+
+**This repository is for VIEWING ONLY. All rights reserved by DCS.**
+
+---
+
 # Runes of Tir na nÓg - Enhanced Prototype
 
 **Feature-rich top-down RPG prototype with pixel art graphics and UI systems**
