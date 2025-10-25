@@ -746,7 +746,7 @@
             localStorage.setItem('bobEnabled', bobToggle.checked.toString());
             
             // Navigate to game
-            window.location.href = '../index.html?new=true';
+            window.location.href = '../game.html?new=true';
         };
 
         // Load save slots
@@ -791,7 +791,7 @@
         // Load world from slot
         window.loadSlot = function(slotNumber) {
             // Navigate to game with slot parameter
-            window.location.href = `../index.html?slot=${slotNumber}`;
+            window.location.href = `../game.html?slot=${slotNumber}`;
         };
 
         // Delete save slot
